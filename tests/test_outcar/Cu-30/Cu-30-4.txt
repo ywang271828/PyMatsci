@@ -1,7 +1,0 @@
-Formation energy (N-1 -> N): -2.70218 eV
-Formation energy (N+1 -> N): 3.27171 eV
-HOMO-LUMO Gap: 0.15610 eV
-Number of valence electrons: 330 electrons
-Similar structure(s): Ag/30/13 Ni/30/1 Pd/30/3 Co/30/2 Ru/30/1 Rh/30/5
-Literature reference(s): https://doi.org/10.1039/A709249K
-Magnetic moment: 0.00090 (Bohr magneton)
