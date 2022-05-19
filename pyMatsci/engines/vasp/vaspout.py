@@ -26,7 +26,7 @@ class VaspOut:
                 if "Call to ZHEGV failed.":
                     terms = line.split()
                     # Also put the return codes in there. These codes might be different.
-                    problems.append("Error_EDDDAV_ZHEGV_{:d}_{:d}_{:d}".format(terms[-3], terms[-2], terms[-1]))
+                    problems.append("Error_EDDDAV_ZHEGV_{:s}_{:s}_{:s}".format(terms[-3], terms[-2], terms[-1]))
                 else:
                     problems.append("Error_EDDDAV")
         return problems

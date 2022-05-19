@@ -104,6 +104,8 @@ class Outcar:
         3. Even if the calculation succeeded, there could still exist a problem. For example,
            highest band is filled during some steps of the run and the final result could be off.
            Always check "problems".
+        4. A few parameters like SIGMA, EDIFFG might be rounded to wrong values. Double check with INCAR
+           and vasprun.xml.
         """
         with open(file_path, "r") as f:
             lines = f.readlines()
@@ -157,11 +159,13 @@ class Outcar:
             elif "NELM " in line:
                 results["NELM"] = int(terms[2].strip(";"))
             elif "NBANDS" in line:
-                if "NBANDS" not in line:
+                if "NBANDS" not in results:
                     results["NBANDS"] = int(terms[-1])
                     results["NKPTS"] = int(terms[3])
-                elif "the highest band":
-                    results.append("Highest_band_filled")
+                elif "the highest band" in line:
+                    results["problems"].append("Highest_band_filled")
+                else:
+                    results["problems"].append("Repeat_NBANDS_in_output")
             elif "TITEL" in line:
                 terms = line.split("=")
                 if "POTCAR" not in results:
@@ -209,7 +213,9 @@ class Outcar:
                 results["elapsed"] = float(terms[-1])
             elif "Error EDDDAV: Call to ZHEGV failed." in line:
                 results["successful"] = False
-                results["problems"].append("Error_EDDDAV")
+                terms = line.split()
+                results["problems"].append("Error_EDDDAV_ZHEGV_" + \
+                    "{:s}_{:s}_{:s}".format(terms[-3], terms[-2], terms[-1]))
 
         # Sanity check.
         if "elapsed" not in results:
@@ -223,24 +229,24 @@ class Outcar:
         # Deemed not successful but can't find an error message in OUTCAR.
         # Try to look at "stdout" or "vasp.out".
         if not results["successful"]:
+            parent_dir = os.path.dirname(os.path.abspath(file_path))
+            if os.path.exists(os.path.join(parent_dir, "vasp.out")):
+                vaspout = os.path.join(parent_dir, "vasp.out")
+            elif os.path.exists(os.path.join(parent_dir, "stdout")):
+                vaspout = os.path.join(parent_dir, "stdout")
+            problems = VaspOut.find_fail_cause(vaspout)
+            results["problems"] += problems
+            
             if len(results["problems"]) == 0:
-                parent_dir = os.path.dirname(os.path.abspath(file_path))
-                if os.path.exists(os.path.join(parent_dir, "vasp.out")):
-                    vaspout = os.path.join(parent_dir, "vasp.out")
-                elif os.path.exists(os.path.join(parent_dir, "stdout")):
-                    vaspout = os.path.join(parent_dir, "stdout")
-                problems = VaspOut.find_fail_cause(vaspout)
-                results += problems
-
-                # Still unknown.
-                if len(results["problems"]) == 0:
-                    results["problems"].append("Unknown_without_wall_time")
+                results["problems"].append("Unknown_without_wall_time")
         else:
             # The calculation could successfully finish but with a potential problem.
             # Like Highest band occupied in some ionic steps (not necessarily the last step).
             if len(results["problems"]) == 0:
                 results["problems"].append("None")
         
+        results["problems"] = list(set(results["problems"]))
+
         return results
 
     def help():
@@ -265,7 +271,10 @@ class Outcar:
                     str_potcar += i + ";"
                 string += str_potcar.strip(";") + " "
             elif key == "problems":
-                pass
+                str_problem = ""
+                for i in self.results["problems"]:
+                    str_problem += i + ";"
+                string += str_problem.strip(";") + " "
             else:
                 string += str(self.results[key]) + " "
         return string.strip()
