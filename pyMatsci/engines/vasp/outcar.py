@@ -1,4 +1,5 @@
 import os
+from pyMatsci.engines.vasp.vaspout import VaspOut
 
 class Outcar:
     """
@@ -7,7 +8,7 @@ class Outcar:
 
     KEYS_in_ORDER = [
                         "successful", "energy_sigma_0", "elapsed", "total_mag", "mag_up", "mag_down", \
-                        "ionic_steps", "NIONS", "NKPTS", "ENCUT", "ISPIN", "ISIF", "ISYM", "NBANDS", \
+                        "problems", "ionic_steps", "NIONS", "NKPTS", "ENCUT", "ISPIN", "ISIF", "ISYM", "NBANDS", \
                         "POTCAR", "IBRION", "ISMEAR", "SIGMA", "PREC", "EDIFF", "EDIFFG", "NSW", "NELM", \
                         "NELECT", "NPAR", "LORBIT", "total_cores", "NCORES_PER_BAND", "start_time", \
                         "vasp_version", "vasp_built_time" \
@@ -36,6 +37,7 @@ class Outcar:
         results["mag_down"] = float("nan")
         results["ionic_steps"] = 0
         results["elapsed"] = float("nan")
+        results["problems"] = ["None"]
 
         # Calculation Settings
         results["ENCUT"] = float("nan")
@@ -66,7 +68,7 @@ class Outcar:
 
         return results
 
-    def parse_outcar(file_path):
+    def parse_outcar_lines(file_path):
         """
         Parse OUTCAR and return extracted values in a dict.
 
@@ -75,15 +77,8 @@ class Outcar:
 
         TODO: Return values as a list for calculations with multiple ionic steps. Or make two
               sets of functions, one for the final state and the other for all ionic steps.
-        """
-        with open(file_path, "r") as f:
-            lines = f.readlines()
-            results = Outcar._parse_outcar_lines(lines)
-        return results
 
-    def _parse_outcar_lines(lines):
-        """
-        Hard code interested values:
+        Hard-coded interested values:
             # Structure
             NIONS;
             
@@ -100,8 +95,21 @@ class Outcar:
         Extracting some of the values depends on the sequence of extracting values. For example,
         reading mag_up and mag_down requires the knowledge of NIONS. The values are extracted in
         the order of OUTCAR.
+
+        Note:
+        1. If the calculation fails, it attempts to read "vasp.out" or "stdout" in the same folder
+           to find an error message about the cause of failure.
+        2. If the calculation fails, the "energy_sigma_0" and a few other parameters are from the
+           last reported ionic/electronic step.
+        3. Even if the calculation succeeded, there could still exist a problem. For example,
+           highest band is filled during some steps of the run and the final result could be off.
+           Always check "problems".
         """
+        with open(file_path, "r") as f:
+            lines = f.readlines()
+        
         results = {}
+        results["problems"] = []
         ispin = 1; lorbit = 0
         for i in range(0, len(lines)):
             line = lines[i]
@@ -149,8 +157,11 @@ class Outcar:
             elif "NELM " in line:
                 results["NELM"] = int(terms[2].strip(";"))
             elif "NBANDS" in line:
-                results["NBANDS"] = int(terms[-1])
-                results["NKPTS"] = int(terms[3])
+                if "NBANDS" not in line:
+                    results["NBANDS"] = int(terms[-1])
+                    results["NKPTS"] = int(terms[3])
+                elif "the highest band":
+                    results.append("Highest_band_filled")
             elif "TITEL" in line:
                 terms = line.split("=")
                 if "POTCAR" not in results:
@@ -188,6 +199,7 @@ class Outcar:
             elif ispin == 2 and "number of electron" in line and "magnetization  " in line:
                 results["total_mag"] = float(terms[-1]) # The same as in OSZICAR.
             elif "reached required accuracy" in line:
+                # TODO: might not be the case for all calculations. Like static.
                 results["successful"] = True
             elif "energy  without entropy" in line:
                 results["energy_sigma_0"] = terms[-1]
@@ -195,6 +207,39 @@ class Outcar:
                 results["ionic_steps"] = int(line.split("(")[0].split()[-1])
             elif "Elapsed" in line:
                 results["elapsed"] = float(terms[-1])
+            elif "Error EDDDAV: Call to ZHEGV failed." in line:
+                results["successful"] = False
+                results["problems"].append("Error_EDDDAV")
+
+        # Sanity check.
+        if "elapsed" not in results:
+            results["successful"] = False
+        
+        # Check possbile problems:
+        if results["ionic_steps"] == results["NSW"] and results["NSW"] >= 1:
+            results["successful"] = False
+            results["problems"].append("Reach_ionic_step_limit")
+
+        # Deemed not successful but can't find an error message in OUTCAR.
+        # Try to look at "stdout" or "vasp.out".
+        if not results["successful"]:
+            if len(results["problems"]) == 0:
+                parent_dir = os.path.dirname(os.path.abspath(file_path))
+                if os.path.exists(os.path.join(parent_dir, "vasp.out")):
+                    vaspout = os.path.join(parent_dir, "vasp.out")
+                elif os.path.exists(os.path.join(parent_dir, "stdout")):
+                    vaspout = os.path.join(parent_dir, "stdout")
+                problems = VaspOut.find_fail_cause(vaspout)
+                results += problems
+
+                # Still unknown.
+                if len(results["problems"]) == 0:
+                    results["problems"].append("Unknown_without_wall_time")
+        else:
+            # The calculation could successfully finish but with a potential problem.
+            # Like Highest band occupied in some ionic steps (not necessarily the last step).
+            if len(results["problems"]) == 0:
+                results["problems"].append("None")
         
         return results
 
@@ -214,12 +259,14 @@ class Outcar:
         """
         string = self.file_path_abs + " "
         for key in Outcar.KEYS_in_ORDER:
-            if key != "POTCAR":
-                string += str(self.results[key]) + " "
-            else:
+            if key == "POTCAR":
                 str_potcar = ""
                 for i in self.results["POTCAR"]:
                     str_potcar += i + ";"
                 string += str_potcar.strip(";") + " "
+            elif key == "problems":
+                pass
+            else:
+                string += str(self.results[key]) + " "
         return string.strip()
 
