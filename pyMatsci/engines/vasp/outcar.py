@@ -68,7 +68,7 @@ class Outcar:
 
         return results
 
-    def parse_outcar_lines(file_path):
+    def parse_outcar(file_path):
         """
         Parse OUTCAR and return extracted values in a dict.
 
