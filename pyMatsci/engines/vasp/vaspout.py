@@ -16,7 +16,7 @@ class VaspOut:
         for i in range(len(lines) - 10, len(lines)):
             line = lines[i]
             if "ZBRENT" in line:
-                if "fatel error in bracketing" in line:
+                if "fatal error in bracketing" in line:
                     problems.append("ZBRENT_error_bracketing")
                 elif "accuracy reached" in line:
                     problems.append("ZBRENT_accuracy_reached")
