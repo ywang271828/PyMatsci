@@ -222,7 +222,9 @@ class Outcar:
             results["successful"] = False
         
         # Check possbile problems:
-        if results["ionic_steps"] == results["NSW"] and results["NSW"] >= 1:
+        if "ionic_steps" not in results:
+            results["problems"].append("Zero ionic steps.")
+        elif results["ionic_steps"] == results["NSW"] and results["NSW"] >= 1:
             results["successful"] = False
             results["problems"].append("Reach_ionic_step_limit")
 
