@@ -207,7 +207,7 @@ class Outcar:
             elif ispin == 2 and "number of electron" in line and "magnetization  " in line:
                 if not utils.is_float(terms[-1]):
                     results.pop("total_mag", None) # reset the value until next valid read.
-
+                    continue
                 # Can only get average MAGMOM from OUTCAR
                 # The first match gives the inital magmom settings.
                 if "MAGMOM" not in results:
