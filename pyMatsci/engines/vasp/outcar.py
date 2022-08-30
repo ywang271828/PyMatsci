@@ -1,7 +1,7 @@
 import os
 from pyMatsci.engines.vasp.vaspout import VaspOut
 from pyMatsci.utils.logger import Logger
-import pyMatsci.utils as utils
+import pyMatsci.utils.utils as utils
 
 class Outcar:
     """
