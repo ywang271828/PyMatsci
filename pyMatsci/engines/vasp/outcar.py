@@ -214,7 +214,11 @@ class Outcar:
             elif "energy  without entropy" in line:
                 results["energy_sigma_0"] = float(terms[-1])
             elif "- Iteration" in line:
-                results["ionic_steps"] = int(line.split("(")[0].split()[-1])
+                # Sometimes supercomputers might have wrongful parallel output that mess up OUTCAR.
+                # To prevent parsing error, only use parsable values.
+                s = line.split("(")[0].split()[-1]
+                if s.isdigit():
+                    results["ionic_steps"] = int(s)
             elif "Elapsed" in line:
                 results["elapsed"] = float(terms[-1])
             elif "Error EDDDAV: Call to ZHEGV failed." in line:
