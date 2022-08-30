@@ -1,6 +1,7 @@
 import os
 from pyMatsci.engines.vasp.vaspout import VaspOut
 from pyMatsci.utils.logger import Logger
+import pyMatsci.utils as utils
 
 class Outcar:
     """
@@ -188,7 +189,7 @@ class Outcar:
                 positive = negative = 0.0
                 while j < len(lines):
                     line = lines[j]
-                    if not line.split()[0].isdigit() or not is_float(lines[j].split()[-1]):
+                    if not line.split()[0].isdigit() or not utils.is_float(lines[j].split()[-1]):
                         # OUTCAR is messed up by parallel IO.
                         break
                     mag_partial = float(lines[j].split()[-1])
@@ -204,7 +205,7 @@ class Outcar:
                 results["mag_up"] = positive
                 results["mag_down"] = negative
             elif ispin == 2 and "number of electron" in line and "magnetization  " in line:
-                if not is_float(terms[-1]):
+                if not utils.is_float(terms[-1]):
                     results.pop("total_mag", None) # reset the value until next valid read.
 
                 # Can only get average MAGMOM from OUTCAR
@@ -218,7 +219,7 @@ class Outcar:
             elif "energy  without entropy" in line:
                 # Prevent messy parallel output
                 s = terms[-1]
-                if is_float(s):
+                if utils.is_float(s):
                     results["energy_sigma_0"] = float(terms[-1])
                 else:
                     results.pop("energy_sigma_0", None) # reset the value until next valid read.
@@ -308,13 +309,6 @@ class Outcar:
         if not self.results["successful"]:
             Logger.warning("Calculation didn't finish successfully. Be careful with the final mag. " + self.file_path_abs)
         return self.results["total_mag"]
-
-    def is_float(s):
-        try:
-            float(s)
-            return True
-        except ValueError:
-            return False
 
     def help():
         """
