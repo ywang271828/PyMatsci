@@ -238,12 +238,17 @@ class Outcar:
         # Try to look at "stdout" or "vasp.out".
         if not results["successful"]:
             parent_dir = os.path.dirname(os.path.abspath(file_path))
+            vaspout = ""
             if os.path.exists(os.path.join(parent_dir, "vasp.out")):
                 vaspout = os.path.join(parent_dir, "vasp.out")
             elif os.path.exists(os.path.join(parent_dir, "stdout")):
                 vaspout = os.path.join(parent_dir, "stdout")
-            problems = VaspOut.find_fail_cause(vaspout)
-            results["problems"] += problems
+            
+            if vaspout != "":
+                problems = VaspOut.find_fail_cause(vaspout)
+                results["problems"] += problems
+            else:
+                results["problems"].append("Cannot_find_vasp_std_output")
             
             if len(results["problems"]) == 0:
                 results["problems"].append("Unknown_without_wall_time")
