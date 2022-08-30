@@ -1,5 +1,6 @@
 import os
 from pyMatsci.engines.vasp.vaspout import VaspOut
+from pyMatsci.utils.logger import Logger
 
 class Outcar:
     """
@@ -10,7 +11,7 @@ class Outcar:
                         "successful", "energy_sigma_0", "elapsed", "total_mag", "mag_up", "mag_down", \
                         "problems", "ionic_steps", "NIONS", "NKPTS", "ENCUT", "ISPIN", "ISIF", "ISYM", "NBANDS", \
                         "POTCAR", "IBRION", "ISMEAR", "SIGMA", "PREC", "EDIFF", "EDIFFG", "NSW", "NELM", \
-                        "NELECT", "NPAR", "LORBIT", "total_cores", "NCORES_PER_BAND", "start_time", \
+                        "NELECT", "NPAR", "LORBIT", "MAGMOM", "total_cores", "NCORES_PER_BAND", "start_time", \
                         "vasp_version", "vasp_built_time" \
                     ]
 
@@ -58,6 +59,7 @@ class Outcar:
         results["NPAR"] = 0
         results["POTCAR"] = "nan"  # Title of functional of each element.
         results["LORBIT"] = "nan"
+        results["MAGMOM"] = float("nan") # Can only get average MAGMOM from OUTCAR.
 
         # Job Setting
         results["total_cores"] = 0
@@ -87,7 +89,7 @@ class Outcar:
             
             # Calc settings (INCAR, POTCAR, KPOINTS)
             ENCUT; ISPIN; ISIF; ISYM; NBANDS; NKPTS; PREC; EDIFF; EDIFFG; IBRION; ISMEAR; 
-            NSW; NELM; NELECT; NPAR; POTCAR; LORBIT
+            NSW; NELM; NELECT; NPAR; POTCAR; LORBIT; MAGMOM
             
             # Running config
             total_cores; NCORES_PER_BAND; start_time; vasp_version; vasp_built_time;
@@ -178,7 +180,7 @@ class Outcar:
             elif "GGA    =" in line:
                 results["functional"] = terms[2]
             elif "NIONS" in line:
-                results["NIONS"] = terms[-1]
+                results["NIONS"] = int(terms[-1])
             elif ispin == 2 and lorbit >= 11 and "magnetization (x)" in line:
                 # TODO: check whether "lorbit >= 11" is a correct condition. 
                 # i.e. mag in written out for each ion.
@@ -201,12 +203,16 @@ class Outcar:
                 results["mag_up"] = positive
                 results["mag_down"] = negative
             elif ispin == 2 and "number of electron" in line and "magnetization  " in line:
+                # Can only get average MAGMOM from OUTCAR
+                # The first match gives the inital magmom settings.
+                if "MAGMOM" not in results:
+                    results["MAGMOM"] = float(terms[-1]) / results["NIONS"]
                 results["total_mag"] = float(terms[-1]) # The same as in OSZICAR.
             elif "reached required accuracy" in line:
                 # TODO: might not be the case for all calculations. Like static.
                 results["successful"] = True
             elif "energy  without entropy" in line:
-                results["energy_sigma_0"] = terms[-1]
+                results["energy_sigma_0"] = float(terms[-1])
             elif "- Iteration" in line:
                 results["ionic_steps"] = int(line.split("(")[0].split()[-1])
             elif "Elapsed" in line:
@@ -251,6 +257,31 @@ class Outcar:
 
         return results
 
+    def is_successful(self):
+        """
+        Return whether calculation finished successfully.
+        """
+        return self.results["successful"]
+
+    #def get_energies(self):
+    #    """
+    #    Return a list of energies at each ionic step.
+    #    """
+    #    pass
+
+    def get_energy(self):
+        """
+        Get the energy at the final step of a relxation.
+        """
+        if not self.results["successful"]:
+            Logger.warning("Calculation didn't finish successfully. Be careful with the final energy. " + self.file_path_abs)
+        return self.results["energy_sigma_0"]
+    
+    def get_magnetization(self):
+        if not self.results["successful"]:
+            Logger.warning("Calculation didn't finish successfully. Be careful with the final mag. " + self.file_path_abs)
+        return self.results["total_mag"]
+
     def help():
         """
         Print a list of parameters currently monitored in this class, separated by space.
@@ -280,4 +311,3 @@ class Outcar:
             else:
                 string += str(self.results[key]) + " "
         return string.strip()
-
