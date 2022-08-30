@@ -212,13 +212,20 @@ class Outcar:
                 # TODO: might not be the case for all calculations. Like static.
                 results["successful"] = True
             elif "energy  without entropy" in line:
-                results["energy_sigma_0"] = float(terms[-1])
+                # Prevent messy parallel output
+                s = terms[-1]
+                if is_float(s):
+                    results["energy_sigma_0"] = float(terms[-1])
+                else:
+                    results.pop("energy_sigma_0", None) # reset the value until next valid read.
             elif "- Iteration" in line:
                 # Sometimes supercomputers might have wrongful parallel output that mess up OUTCAR.
                 # To prevent parsing error, only use parsable values.
                 s = line.split("(")[0].split()[-1]
                 if s.isdigit():
                     results["ionic_steps"] = int(s)
+                else:
+                    results["ionic_steps"] == 0 # reset the value until next valid read.
             elif "Elapsed" in line:
                 results["elapsed"] = float(terms[-1])
             elif "Error EDDDAV: Call to ZHEGV failed." in line:
@@ -231,12 +238,19 @@ class Outcar:
         if "elapsed" not in results:
             results["successful"] = False
         
+        if "energy_sigma_0" not in results:
+            results["successful"] = False
+
         # Check possbile problems:
-        if "ionic_steps" not in results:
+        if "ionic_steps" not in results or results["ionic_steps"] == 0:
             results["problems"].append("Zero ionic steps.")
         elif results["ionic_steps"] == results["NSW"] and results["NSW"] >= 1:
             results["successful"] = False
             results["problems"].append("Reach_ionic_step_limit")
+        elif "elapsed" not in results:
+            results["problems"].append("No_wall_time")
+        elif "energy_sigma_0" not in results:
+            results["problems"].appned("Cannot_read_total_energy")
 
         # Deemed not successful but can't find an error message in OUTCAR.
         # Try to look at "stdout" or "vasp.out".
@@ -290,6 +304,13 @@ class Outcar:
         if not self.results["successful"]:
             Logger.warning("Calculation didn't finish successfully. Be careful with the final mag. " + self.file_path_abs)
         return self.results["total_mag"]
+
+    def is_float(s):
+        try:
+            float(s)
+            return True
+        except ValueError:
+            return False
 
     def help():
         """
