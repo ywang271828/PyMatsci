@@ -13,6 +13,8 @@ class VaspOut:
         with open(path) as file:
             lines = file.readlines()
         # Only look at the bottom of the output file.
+        if len(lines) < 10:
+            problems.append("VASP_failed")
         for i in range(len(lines) - 10, len(lines)):
             line = lines[i]
             if "ZBRENT" in line:
