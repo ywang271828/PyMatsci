@@ -26,7 +26,7 @@ class Logger:
 
     @classmethod
     def error(cls, message):
-        print("{:s}: Error! {:s}".format(str(datetime.now()), message), file = stderr)
+        print("{:s}: Error! {:s}".format(str(datetime.now()), message))
 
     @classmethod
     def detail(cls, message):
