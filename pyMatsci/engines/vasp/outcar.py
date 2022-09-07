@@ -249,6 +249,9 @@ class Outcar:
         # Check possbile problems:
         if "ionic_steps" not in results or results["ionic_steps"] == 0:
             results["problems"].append("Zero ionic steps.")
+        elif "NSW" not in results:
+            results["successful"] = False
+            results["problems"].append("Incomplete_OUTCAR_no_NSW")
         elif results["ionic_steps"] == results["NSW"] and results["NSW"] >= 1:
             results["successful"] = False
             results["problems"].append("Reach_ionic_step_limit")
@@ -281,7 +284,7 @@ class Outcar:
             if len(results["problems"]) == 0:
                 results["problems"].append("None")
         
-        results["problems"] = list(set(results["problems"]))
+        results["problems"] = list(set(results["problems"])) # Remove duplicates
 
         return results
 
@@ -314,11 +317,7 @@ class Outcar:
         """
         Print a list of parameters currently monitored in this class, separated by space.
         """
-        results = Outcar.init()
-        string = "file_path "
-        for key in Outcar.KEYS_in_ORDER:
-            string += key + " "
-        return string.strip()
+        return "file_path " + " ".join(Outcar.KEYS_in_ORDER)
 
     def __str__(self):
         """
@@ -327,15 +326,9 @@ class Outcar:
         string = self.file_path_abs + " "
         for key in Outcar.KEYS_in_ORDER:
             if key == "POTCAR":
-                str_potcar = ""
-                for i in self.results["POTCAR"]:
-                    str_potcar += i + ";"
-                string += str_potcar.strip(";") + " "
+                string += ";".join(self.results["POTCAR"]) + " "
             elif key == "problems":
-                str_problem = ""
-                for i in self.results["problems"]:
-                    str_problem += i + ";"
-                string += str_problem.strip(";") + " "
+                string += ";".join(self.results["problems"]) + " "
             else:
                 string += str(self.results[key]) + " "
         return string.strip()
