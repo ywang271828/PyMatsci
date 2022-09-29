@@ -230,7 +230,7 @@ class Outcar:
                 if s.isdigit():
                     results["ionic_steps"] = int(s)
                 else:
-                    results["ionic_steps"] == 0 # reset the value until next valid read.
+                    results["ionic_steps"] = 0 # reset the value until next valid read.
             elif "Elapsed" in line:
                 results["elapsed"] = float(terms[-1])
             elif "Error EDDDAV: Call to ZHEGV failed." in line:
