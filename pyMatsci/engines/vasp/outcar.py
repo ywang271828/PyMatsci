@@ -189,10 +189,11 @@ class Outcar:
                 positive = negative = 0.0
                 while j < len(lines):
                     line = lines[j]
-                    if not line.split()[0].isdigit() or not utils.is_float(lines[j].split()[-1]):
+                    terms = line.split()
+                    if len(terms) == 0 or not terms[0].isdigit() or not utils.is_float(terms[-1]):
                         # OUTCAR is messed up by parallel IO.
                         break
-                    mag_partial = float(lines[j].split()[-1])
+                    mag_partial = float(terms[-1])
                     if mag_partial >= 0:
                         positive += mag_partial
                     else:
