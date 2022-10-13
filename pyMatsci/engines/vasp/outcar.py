@@ -2,6 +2,7 @@ import os
 from pyMatsci.engines.vasp.vaspout import VaspOut
 from pyMatsci.utils.logger import Logger
 import pyMatsci.utils.utils as utils
+import math
 
 class Outcar:
     """
@@ -9,7 +10,7 @@ class Outcar:
     """
 
     KEYS_in_ORDER = [
-                        "successful", "energy_sigma_0", "elapsed", "total_mag", "mag_up", "mag_down", \
+                        "successful", "energy_sigma_0", "max_force", "elapsed", "total_mag", "mag_up", "mag_down", \
                         "problems", "ionic_steps", "NIONS", "NKPTS", "ENCUT", "ISPIN", "ISIF", "ISYM", "NBANDS", \
                         "POTCAR", "IBRION", "ISMEAR", "SIGMA", "PREC", "EDIFF", "EDIFFG", "NSW", "NELM", \
                         "NELECT", "NPAR", "LORBIT", "MAGMOM", "total_cores", "NCORES_PER_BAND", "start_time", \
@@ -34,6 +35,7 @@ class Outcar:
         # Results
         results["successful"] = False
         results["energy_sigma_0"] = float("nan")
+        results["max_force"] = float("nan")
         results["total_mag"] = float("nan")
         results["mag_up"] = float("nan")
         results["mag_down"] = float("nan")
@@ -224,6 +226,22 @@ class Outcar:
                     results["energy_sigma_0"] = float(terms[-1])
                 else:
                     results.pop("energy_sigma_0", None) # reset the value until next valid read.
+            elif "TOTAL-FORCE" in line and "NIONS" in results:
+                max_force = 0.0
+                valid = True
+                for j in range(i + 2, i + 2 + results["NIONS"]):
+                    line = lines[j].strip().split()
+                    fx = line[-3].strip()
+                    fy = line[-2].strip()
+                    fz = line[-1].strip()
+                    if not utils.is_float(fx) or not utils.is_float(fy) or not utils.is_float(fz):
+                        valid = False
+                        break
+                    fi = math.sqrt(float(fx)**2 + float(fy)**2 + float(fz)**2)
+                    if fi > max_force:
+                        max_force = fi
+                if valid and max_force > 0:
+                    results["max_force"] = max_force # Use the force at the last ionic step
             elif "- Iteration" in line:
                 # Sometimes supercomputers might have wrongful parallel output that mess up OUTCAR.
                 # To prevent parsing error, only use parsable values.

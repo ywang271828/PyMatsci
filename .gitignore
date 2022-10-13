@@ -1,5 +1,7 @@
 dist
 build
+tests
 .eggs
 *.egg-info
 *.pyc
+.vscode
