@@ -327,6 +327,12 @@ class Outcar:
             Logger.warning("Calculation didn't finish successfully. Be careful with the final energy. " + self.file_path_abs)
         return self.results["energy_sigma_0"]
     
+    def get_max_force(self):
+        """
+        Get the maximum force in the last ionic step.
+        """
+        return self.results["max_force"]
+
     def get_magnetization(self):
         if not self.results["successful"]:
             Logger.warning("Calculation didn't finish successfully. Be careful with the final mag. " + self.file_path_abs)
