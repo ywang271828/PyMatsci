@@ -281,7 +281,8 @@ class Outcar:
 
         # Deemed not successful but can't find an error message in OUTCAR.
         # Try to look at "stdout" or "vasp.out".
-        if not results["successful"]:
+        # NSW=0 -> static calculation. No "reached required accuracy" in OUTCAR.
+        if results["NSW"] != 0 and not results["successful"]:
             parent_dir = os.path.dirname(os.path.abspath(file_path))
             vaspout = ""
             if os.path.exists(os.path.join(parent_dir, "vasp.out")):
