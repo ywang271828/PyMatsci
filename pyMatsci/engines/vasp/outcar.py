@@ -279,10 +279,12 @@ class Outcar:
         elif "energy_sigma_0" not in results:
             results["problems"].appned("Cannot_read_total_energy")
 
+        if results["NSW"] == 0 and "successful" not in results:
+            results["successful"] = True # It's just a static calcualtion. No "reached required accuracy" in OUTCAR.
+
         # Deemed not successful but can't find an error message in OUTCAR.
         # Try to look at "stdout" or "vasp.out".
-        # NSW=0 -> static calculation. No "reached required accuracy" in OUTCAR.
-        if results["NSW"] != 0 and not results["successful"]:
+        if not results["successful"]:
             parent_dir = os.path.dirname(os.path.abspath(file_path))
             vaspout = ""
             if os.path.exists(os.path.join(parent_dir, "vasp.out")):
